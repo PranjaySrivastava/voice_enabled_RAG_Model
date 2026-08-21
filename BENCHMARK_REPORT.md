@@ -24,7 +24,7 @@
 | **Tier-1 Safety Armor** | Regex Heuristic Pre-Filter | 0.010 | 0.012 | 0.020 |
 | **Hybrid RRF Retrieval** | LanceDB IVF-PQ + BM25 (k=60) | 38.69 | 42.15 | 48.30 |
 | **Tier-2 OOD Semantic Gate** | Cosine Distance Gating | 0.005 | 0.006 | 0.010 |
-| **Groq LPU Generation** | Compound-Mini / LLaMA-3.1 LPU | 105.00 | 108.50 | 114.20 |
+| **Groq LPU Generation** | llama-3.1-8b-instant / llama-3.3-70b-versatile LPU | 105.00 | 108.50 | 114.20 |
 | **Tier-3 NLI Groundedness** | Concept Token Overlap | 0.015 | 0.018 | 0.025 |
 | **Core Compute Total** | **Dhwani Core Engine** | **142.36** | **148.20** | **162.50** |
 

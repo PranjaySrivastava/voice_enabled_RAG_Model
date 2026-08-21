@@ -49,7 +49,7 @@
 > - **Structured Orchestration**: Pydantic v2 schemas (`DhwaniRAGResponse`, `LatencyWaterfall`, `RetrievedCitation`).
 > - **Resilience**: Async jitter retries (`@async_jitter_retry`) with exponential backoff.
 > - **Circuit Breakers**: In-memory circuit breaker protecting against upstream provider rate limits.
-> - **Multi-Model Failover Cascade**: Cascades across high-speed Groq LPU models (`groq/compound-mini` $\to$ `llama-3.1-8b-instant`).
+> - **Multi-Model Failover Cascade**: Cascades across high-speed Groq LPU models (`llama-3.1-8b-instant` → `llama-3.3-70b-versatile` → `llama3-8b-8192`).
 
 #### F. 4-Tier Comprehensive Guardrail Matrix
 > - **Tier 1 (Prompt Injection & Safety Armor)**: Pre-retrieval regex heuristic blocking dangerous, toxic, or exploit queries in `< 0.05 ms`.

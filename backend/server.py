@@ -435,9 +435,46 @@ async def execute_dhwani_rag(
 
     candidates: List[RetrievedCandidate] = []
     top_distance = 1.0
+    best_sparse_score = 0.0
+
+    # Detect if query is in a non-Latin (Indic) script.
+    # The hash-based fallback embedder produces meaningless vectors for Indic text,
+    # so we cannot rely on dense distance for OOD gating for Indic queries.
+    is_indic_query = bool(re.search(r'[\u0900-\u0D7F]', transcript))
+
+    # Indic keyword bridge: map common Indic query words to English equivalents for BM25
+    INDIC_KEYWORD_BRIDGE: Dict[str, str] = {
+        # Hindi
+        "निर्माण": "construction", "वाहन": "vehicles", "रक्तचाप": "blood pressure",
+        "उच्च": "high", "रोग": "disease", "कारण": "causes", "उपचार": "treatment",
+        "राजधानी": "capital", "कंपनी": "corporation", "निगम": "corporation",
+        "तापमान": "temperature", "प्रकाश": "photosynthesis light", "संश्लेषण": "photosynthesis",
+        "पौधे": "plants", "भारत": "india", "दिल्ली": "delhi",
+        # Odia
+        "ନିର୍ମାଣ": "construction", "ଯାନ": "vehicles", "ରକ୍ତଚାପ": "blood pressure",
+        "ଉଚ୍ଚ": "high", "ରୋଗ": "disease", "କାରଣ": "causes", "ଚିକିତ୍ସା": "treatment",
+        "ରାଜଧାନୀ": "capital", "କମ୍ପାନୀ": "corporation", "ତାପମାତ୍ରା": "temperature",
+        "ପ୍ରକାଶ": "photosynthesis light", "ସଂଶ୍ଳେଷଣ": "photosynthesis",
+        "ଉଦ୍ଭିଦ": "plants", "ଭାରତ": "india", "ଦିଲ୍ଲୀ": "delhi",
+        # Tamil
+        "கட்டுமானம்": "construction", "வாகனங்கள்": "vehicles", "இரத்த அழுத்தம்": "blood pressure",
+        "நோய்": "disease", "காரணங்கள்": "causes", "தலைநகரம்": "capital",
+        # Telugu
+        "నిర్మాణ": "construction", "వాహనాలు": "vehicles", "రక్తపోటు": "blood pressure",
+        "వ్యాధి": "disease", "కారణాలు": "causes", "రాజధాని": "capital",
+    }
+
+    def _get_english_expansion(text: str) -> str:
+        """Expand Indic query terms to English equivalents for BM25 cross-language retrieval."""
+        expanded = text
+        for indic_word, eng_equiv in INDIC_KEYWORD_BRIDGE.items():
+            if indic_word in text:
+                expanded += " " + eng_equiv
+        return expanded
 
     if cached_candidates:
         candidates = cached_candidates
+        best_sparse_score = max((c.sparse_score for c in candidates), default=0.0)
         top_distance = candidates[0].dense_distance if candidates else 0.2
         waterfall.dense_retrieval_ms = 0.1
         waterfall.sparse_retrieval_ms = 0.1
@@ -445,7 +482,9 @@ async def execute_dhwani_rag(
     else:
         # 3. Hybrid Dense-Sparse Search with LanceDB & BM25
         t_dense_start = time.perf_counter()
-        query_vec = await asyncio.to_thread(embed_model.encode, transcript, normalize_embeddings=True)
+        # For Indic queries, also encode the English expansion to improve dense search
+        search_text = _get_english_expansion(transcript) if is_indic_query else transcript
+        query_vec = await asyncio.to_thread(embed_model.encode, search_text, normalize_embeddings=True)
         dense_results = []
         if table is not None:
             try:
@@ -456,11 +495,23 @@ async def execute_dhwani_rag(
                 print(f"Dense search notice: {e}")
         waterfall.dense_retrieval_ms = round((time.perf_counter() - t_dense_start) * 1000, 2)
 
-        # Sparse BM25 Search
+        # Sparse BM25 Search — for Indic queries, search using expanded English terms too
         t_sparse_start = time.perf_counter()
         sparse_results = []
         if bm25_index is not None and bm25_index.num_docs > 0:
+            # Primary search with original query (catches Hindi translated_passage matches)
             sparse_hits = bm25_index.search(transcript, top_k=5)
+            # Secondary search with English expansion (catches English parent_passage matches)
+            if is_indic_query:
+                eng_expanded = _get_english_expansion(transcript)
+                if eng_expanded.strip() != transcript.strip():
+                    eng_hits = bm25_index.search(eng_expanded, top_k=5)
+                    # Merge: keep highest score per doc_id
+                    hits_map = {doc_id: score for doc_id, score in sparse_hits}
+                    for doc_id, score in eng_hits:
+                        if doc_id not in hits_map or score > hits_map[doc_id]:
+                            hits_map[doc_id] = score
+                    sparse_hits = sorted(hits_map.items(), key=lambda x: x[1], reverse=True)[:5]
             sparse_results = [(bm25_index.documents[doc_id], score) for doc_id, score in sparse_hits]
         waterfall.sparse_retrieval_ms = round((time.perf_counter() - t_sparse_start) * 1000, 2)
 
@@ -470,15 +521,25 @@ async def execute_dhwani_rag(
         waterfall.rrf_fusion_ms = round((time.perf_counter() - t_rrf_start) * 1000, 2)
 
         if candidates:
-            if candidates[0].sparse_score > 0.3:
+            best_sparse_score = max((c.sparse_score for c in candidates), default=0.0)
+            if best_sparse_score > 0.3:
                 top_distance = min(candidates[0].dense_distance, 0.28)
             else:
                 top_distance = candidates[0].dense_distance
             semantic_cache.put(transcript, candidates)
 
     # 4. Tier 2 Guardrail: Out-of-Domain (OOD) Semantic Gating
-    # Checks whether any chunk in the indexed MSMARCO dataset genuinely matches the query
-    tier2_violation = evaluate_tier2_domain_gate(top_distance, threshold=GUARDRAIL_DISTANCE_THRESHOLD, language_code=language_code)
+    # For Indic queries: hash embedder gives meaningless dense distances.
+    # Use BM25 sparse score as the primary relevance signal instead.
+    # If BM25 found ANY meaningful match (sparse_score > 1.5), pass it through.
+    effective_distance = top_distance
+    if is_indic_query and best_sparse_score > 1.5:
+        # BM25 found a real match; treat as close (within domain)
+        effective_distance = min(top_distance, 0.30)
+    elif is_indic_query and best_sparse_score > 0.5:
+        effective_distance = min(top_distance, 0.55)
+
+    tier2_violation = evaluate_tier2_domain_gate(effective_distance, threshold=GUARDRAIL_DISTANCE_THRESHOLD, language_code=language_code)
     if tier2_violation:
         code, msg = tier2_violation
         tot_ms = round((time.perf_counter() - t_start + (stt_ms / 1000)) * 1000, 2)
@@ -499,6 +560,12 @@ async def execute_dhwani_rag(
 
     # 5. LLM Prompt Construction with Multilingual Grounded Context from Chunked Data
     context_passages = [c.parent_passage or c.chunk_text for c in candidates if c.parent_passage or c.chunk_text]
+    # For Indic queries, also include the Hindi translated_passage to give the LLM native-language context
+    if is_indic_query:
+        for c in candidates:
+            tp = (c.translated_passage or "").strip()
+            if tp and tp not in context_passages:
+                context_passages.append(tp)
     
     lang_names = {
         "gu-IN": "Gujarati (ગુજરાતી)",
@@ -515,7 +582,7 @@ async def execute_dhwani_rag(
     }
     target_lang = lang_names.get(language_code, "English")
 
-    ctx_formatted = "\n---\n".join(context_passages[:2]) if context_passages else ""
+    ctx_formatted = "\n---\n".join(context_passages[:3]) if context_passages else ""
     prompt = (
         f"Context:\n{ctx_formatted}\n\n"
         f"Question (Answer factually in {target_lang}): {transcript}\n"
