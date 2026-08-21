@@ -1,0 +1,1 @@
+# Cleaned temporary scratch file

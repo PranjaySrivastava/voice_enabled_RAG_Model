@@ -1,0 +1,283 @@
+@import "tailwindcss";
+
+:root {
+  --background: #09090b;
+  --foreground: #f4f4f5;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Universal Pointer Cursor for All Buttons & Interactive Controls */
+button,
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+a,
+select,
+summary {
+  cursor: pointer !important;
+}
+
+button:disabled,
+[role="button"][aria-disabled="true"],
+input:disabled {
+  cursor: not-allowed !important;
+}
+
+/* Custom Animation Keyframes */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes sonicPulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.2;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+@keyframes earWiggle {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-6deg);
+  }
+  75% {
+    transform: rotate(6deg);
+  }
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateY(0px);
+    opacity: 0.1;
+  }
+  20% {
+    opacity: 0.95;
+  }
+  80% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(64px);
+    opacity: 0.1;
+  }
+}
+
+@keyframes blinkCursor {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes mouthTalk {
+  0%, 100% {
+    height: 4px;
+    border-radius: 9999px;
+  }
+  30% {
+    height: 14px;
+    border-radius: 8px;
+  }
+  70% {
+    height: 8px;
+    border-radius: 6px;
+  }
+}
+
+@keyframes eyeBlink {
+  0%, 90%, 100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes cyberDance {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+  20% {
+    transform: translateY(-12px) rotate(-8deg) scale(1.05);
+  }
+  40% {
+    transform: translateY(2px) rotate(6deg) scale(0.98);
+  }
+  60% {
+    transform: translateY(-10px) rotate(8deg) scale(1.05);
+  }
+  80% {
+    transform: translateY(1px) rotate(-6deg) scale(0.98);
+  }
+}
+
+@keyframes turboSpin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes hyperCharge {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 10px rgba(16, 185, 129, 0.4));
+  }
+  25% {
+    transform: scale(1.06) translate(-2px, 1px);
+    filter: drop-shadow(0 0 25px rgba(6, 182, 212, 0.8));
+  }
+  50% {
+    transform: scale(1.08) translate(2px, -1px);
+    filter: drop-shadow(0 0 35px rgba(245, 158, 11, 0.9));
+  }
+  75% {
+    transform: scale(1.06) translate(-1px, -2px);
+    filter: drop-shadow(0 0 25px rgba(16, 185, 129, 0.8));
+  }
+}
+
+@keyframes soundwaveBar {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1.2);
+  }
+}
+
+@keyframes bubblePop {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.85);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: floatSlow 6s ease-in-out infinite;
+}
+
+.animate-sonic-pulse {
+  animation: sonicPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-ear-wiggle {
+  animation: earWiggle 0.6s ease-in-out infinite;
+}
+
+.animate-scanline {
+  animation: scanline 2s linear infinite;
+}
+
+.animate-blink-cursor {
+  animation: blinkCursor 0.8s infinite;
+}
+
+.animate-eye-blink {
+  animation: eyeBlink 3.5s infinite;
+}
+
+.animate-cyber-dance {
+  animation: cyberDance 0.85s ease-in-out infinite;
+}
+
+.animate-turbo-spin {
+  animation: turboSpin 0.75s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.animate-hyper-charge {
+  animation: hyperCharge 0.4s ease-in-out infinite;
+}
+
+.animate-bubble-pop {
+  animation: bubblePop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Glassmorphism & High-tech Borders */
+.glass-panel {
+  background: rgba(15, 17, 23, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-glow {
+  background: rgba(18, 24, 27, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  box-shadow: 0 0 30px -10px rgba(16, 185, 129, 0.15);
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(9, 9, 11, 0.8);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(39, 39, 42, 0.8);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(16, 185, 129, 0.4);
+}
